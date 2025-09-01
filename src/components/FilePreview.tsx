@@ -106,46 +106,46 @@ export function FilePreview({ fileName, filePath, className }: FilePreviewProps)
 
   return (
     <div className={`group relative ${className}`}>
-      <div className="flex flex-col items-center gap-2 sm:gap-3">
+      <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg hover:bg-accent/50 transition-all duration-200 group-hover:scale-105">
         {showThumbnail ? (
-          <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg overflow-hidden flex items-center justify-center shadow-sm">
             {isImage ? (
               <img
                 src={fullPath}
                 alt={fileName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-md"
                 onError={() => setPreviewError(true)}
                 loading="lazy"
               />
             ) : isVideo ? (
               <video
                 src={fullPath}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-md"
                 onError={() => setPreviewError(true)}
                 muted
                 preload="metadata"
               />
             ) : null}
-            {previewError && getFileIcon(fileName, 'w-6 h-6 sm:w-8 sm:h-8')}
+            {previewError && getFileIcon(fileName, 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12')}
           </div>
         ) : (
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center">
-            {getFileIcon(fileName, 'w-6 h-6 sm:w-8 sm:h-8')}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg flex items-center justify-center">
+            {getFileIcon(fileName, 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12')}
           </div>
         )}
         
-        <span className="text-xs sm:text-sm font-medium text-center truncate w-full max-w-[80px] sm:max-w-[120px] text-foreground">
+        <span className="text-xs sm:text-sm md:text-base font-medium text-center text-foreground leading-tight max-w-full break-words">
           {fileName}
         </span>
       </div>
       
       {isImage && !previewError && (
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full z-50 bg-popover border border-border rounded-lg shadow-lg p-2">
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full bg-popover border border-border rounded-lg shadow-lg p-2">
             <img
               src={fullPath}
               alt={fileName}
-              className="max-w-[150px] sm:max-w-[200px] max-h-[150px] sm:max-h-[200px] object-contain rounded"
+              className="max-w-[200px] sm:max-w-[250px] md:max-w-[300px] max-h-[200px] sm:max-h-[250px] md:max-h-[300px] object-contain rounded"
               loading="lazy"
             />
           </div>
@@ -159,21 +159,16 @@ export function FileCard({ fileName, filePath, onClick }: FilePreviewProps & { o
   const fullPath = filePath ? `/${filePath}` : `/${fileName}`;
   
   return (
-    <Button
-      variant="outline"
-      className="h-auto w-full hover:bg-accent hover:border-accent-foreground/20 transition-all relative group"
-      onClick={onClick}
-      asChild
-    >
+    <div className="relative group">
       <a
         href={fullPath}
         target="_blank"
         rel="noopener noreferrer"
-        className="block"
+        className="block w-full"
+        onClick={onClick}
       >
         <FilePreview fileName={fileName} filePath={filePath} />
-       
       </a>
-    </Button>
+    </div>
   );
 }

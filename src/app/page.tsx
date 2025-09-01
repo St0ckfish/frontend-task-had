@@ -2,6 +2,7 @@ import { getRoot } from '@/src/lib/data';
 import { CreateFolderButton } from '@/src/components/CreateFolder';
 import { CreateFileButton } from '@/src/components/CreateFile';
 import { FolderList } from '@/src/components/FolderList';
+import { ViewToggle } from '@/src/components/ViewToggle';
 import { Separator } from '@/src/components/ui/separator';
 import {
   Breadcrumb,
@@ -38,6 +39,7 @@ export default async function Home() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ViewToggle />
             <CreateFolderButton />
             <CreateFileButton />
           </div>

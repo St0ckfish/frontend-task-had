@@ -4,6 +4,7 @@ import * as React from 'react';
 import { cn } from '@/src/lib/utils';
 import { Button } from './button';
 import { PanelLeft } from 'lucide-react';
+import { ThemeToggle } from '@/src/components/ThemeToggle';
 
 interface SidebarContextProps {
   isExpanded: boolean;
@@ -79,24 +80,30 @@ function SidebarHeader({ className, children, ...props }: SidebarHeaderProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 border-b border-border px-3 py-4 bg-muted/50',
+        `flex items-center justify-between gap-3 border-b border-border px-3 py-4 bg-muted/50 ${isExpanded ? 'flex' : 'grid'}`,
         className
       )}
       {...props}
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggle}
-        className="h-8 w-8 shrink-0 bg-gray-200"
-      >
-        <PanelLeft className="h-4 w-4" />
-      </Button>
-      {isExpanded && children && (
-        <div className="flex-1 truncate text-sm font-semibold text-foreground">
-          {children}
-        </div>
-      )}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
+          className="h-8 w-8 shrink-0"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+        {isExpanded && children && (
+          <div className="flex-1 truncate text-sm font-semibold text-foreground">
+            {children}
+          </div>
+        )}
+      </div>
+      
+      <div className="flex items-center">
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

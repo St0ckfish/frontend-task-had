@@ -3,6 +3,7 @@ import { findFolder, getBreadcrumbPath } from '@/src/lib/data';
 import { CreateFolderButton } from '@/src/components/CreateFolder';
 import { CreateFileButton } from '@/src/components/CreateFile';
 import { FolderList } from '@/src/components/FolderList';
+import { ViewToggle } from '@/src/components/ViewToggle';
 import { Separator } from '@/src/components/ui/separator';
 import { Button } from '@/src/components/ui/button';
 import {
@@ -84,6 +85,7 @@ export default async function FolderPage({ params }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ViewToggle />
             <CreateFolderButton folderId={params.id} />
             <CreateFileButton folderId={params.id} />
           </div>
