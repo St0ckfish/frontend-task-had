@@ -122,6 +122,64 @@ export async function POST(
   }
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
+  try {
+    const { name } = await req.json();
+    
+    if (!name || typeof name !== "string") {
+      return errorResponse("Invalid name provided", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const result = await findItem(params.id);
+    
+    if (!result || result.item.type !== "file") {
+      return errorResponse(ERROR_MESSAGES.FILE_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const safeName = basename(name.trim());
+    
+    if (!safeName) {
+      return errorResponse(ERROR_MESSAGES.INVALID_FILE_NAME, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const publicDir = join(process.cwd(), "public");
+    const oldPath = join(publicDir, result.item.path);
+    
+    const { dir } = parse(result.item.path);
+    const newPath = join(publicDir, dir, safeName);
+
+    if (await fileExists(newPath) && oldPath !== newPath) {
+      return errorResponse("File with this name already exists", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (oldPath !== newPath) {
+      const { rename } = await import("fs/promises");
+      await rename(oldPath, newPath);
+    }
+
+    invalidateCache();
+    revalidatePath("/");
+    
+    if (result.parent && result.parent.id !== "root") {
+      revalidatePath(`/folder/${result.parent.id}`);
+    }
+
+    return successResponse({ 
+      fileName: safeName,
+      path: dir ? `${dir}/${safeName}` : safeName
+    });
+
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      return errorResponse(ERROR_MESSAGES.FILE_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+    return errorResponse("Failed to rename file", HTTP_STATUS.INTERNAL_ERROR);
+  }
+}
+
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }

@@ -180,6 +180,75 @@ export async function POST(
   }
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: FolderParams
+): Promise<NextResponse> {
+  try {
+    const { name } = await req.json();
+    
+    const folderName = validateFolderName(name);
+    if (!folderName) {
+      return errorResponse(
+        ERROR_MESSAGES.INVALID_FOLDER_NAME,
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    if (params.id === "root") {
+      return errorResponse(
+        "Cannot rename root folder",
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    const folderPath = getFolderPathFromId(params.id);
+    
+    if (!folderPath) {
+      return errorResponse(
+        ERROR_MESSAGES.FOLDER_NOT_FOUND,
+        HTTP_STATUS.NOT_FOUND
+      );
+    }
+
+    const publicDir = join(process.cwd(), "public");
+    const oldPath = join(publicDir, folderPath);
+    
+    const parentPath = join(folderPath, "..");
+    const newPath = parentPath === "." 
+      ? join(publicDir, folderName)
+      : join(publicDir, parentPath, folderName);
+
+    if (await directoryExists(newPath) && oldPath !== newPath) {
+      return errorResponse(
+        ERROR_MESSAGES.FOLDER_EXISTS,
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    if (oldPath !== newPath) {
+      const { rename } = await import("fs/promises");
+      await rename(oldPath, newPath);
+    }
+
+    invalidateFolderCaches();
+
+    return successResponse({ folderName });
+
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      return errorResponse(
+        ERROR_MESSAGES.FOLDER_NOT_FOUND,
+        HTTP_STATUS.NOT_FOUND
+      );
+    }
+    return errorResponse(
+      "Failed to rename folder",
+      HTTP_STATUS.INTERNAL_ERROR
+    );
+  }
+}
+
 export async function DELETE(
   _req: Request,
   { params }: FolderParams

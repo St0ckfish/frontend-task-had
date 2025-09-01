@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FolderNode, FileNode } from '@/src/lib/data';
 import { Button } from '@/src/components/ui/button';
-import { Folder, Trash2, File } from 'lucide-react';
+import { Input } from '@/src/components/ui/input';
+import { Folder, Trash2, File, Edit2 } from 'lucide-react';
 import { useViewStore } from '../lib/store';
 import { FilePreview } from './FilePreview';
 import {
@@ -27,6 +28,9 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<FolderNode | FileNode | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const { viewMode } = useViewStore();
   const router = useRouter();
 
@@ -40,6 +44,64 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
     
     setItemToDelete(item);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (item: FolderNode | FileNode, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    if (isRenaming || item.id === 'root') return;
+    
+    setEditingId(item.id);
+    setEditName(item.name);
+  };
+
+  const handleSaveEdit = async (item: FolderNode | FileNode) => {
+    if (!editName.trim() || editName === item.name) {
+      setEditingId(null);
+      setEditName('');
+      return;
+    }
+
+    setIsRenaming(item.id);
+    
+    try {
+      const endpoint = item.type === 'folder' ? `/api/folders/${item.id}` : `/api/files/${item.id}`;
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to rename');
+      }
+      
+      router.refresh();
+      setEditingId(null);
+      setEditName('');
+    } catch {
+    } finally {
+      setIsRenaming(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, item: FolderNode | FileNode) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit(item);
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -90,6 +152,11 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                       <Link 
                         href={`/folder/${node.id}`}
                         className="block w-full"
+                        onClick={(e) => {
+                          if (editingId === node.id) {
+                            e.preventDefault();
+                          }
+                        }}
                       >
                         <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg hover:bg-accent/50 transition-all duration-200 group-hover:scale-105">
                           <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24">
@@ -100,9 +167,21 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                             />
                           </div>
                           
-                          <span className="text-xs sm:text-sm md:text-base font-medium text-center text-foreground leading-tight max-w-full break-words">
-                            {node.name}
-                          </span>
+                          {editingId === node.id ? (
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, node)}
+                              onBlur={() => handleSaveEdit(node)}
+                              className="text-xs sm:text-sm md:text-base font-medium text-center h-auto py-1 px-2"
+                              autoFocus
+                              disabled={isRenaming === node.id}
+                            />
+                          ) : (
+                            <span className="text-xs sm:text-sm md:text-base font-medium text-center text-foreground leading-tight max-w-full break-words">
+                              {node.name}
+                            </span>
+                          )}
                         </div>
                       </Link>
                       
@@ -122,6 +201,13 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                   </ContextMenuTrigger>
                   {node.id !== 'root' && (
                     <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => handleEditClick(node)}
+                        disabled={isRenaming === node.id}
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        {isRenaming === node.id ? 'Renaming...' : 'Rename folder'}
+                      </ContextMenuItem>
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => handleDeleteClick(node)}
@@ -148,8 +234,28 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block w-full"
+                      onClick={(e) => {
+                        if (editingId === node.id) {
+                          e.preventDefault();
+                        }
+                      }}
                     >
-                      <FilePreview fileName={node.name} filePath={filePath} />
+                      {editingId === node.id ? (
+                        <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg hover:bg-accent/50 transition-all duration-200">
+                          <File className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-gray-500" />
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, node)}
+                            onBlur={() => handleSaveEdit(node)}
+                            className="text-xs sm:text-sm md:text-base font-medium text-center h-auto py-1 px-2"
+                            autoFocus
+                            disabled={isRenaming === node.id}
+                          />
+                        </div>
+                      ) : (
+                        <FilePreview fileName={node.name} filePath={filePath} />
+                      )}
                     </a>
                     
                     <Button
@@ -165,6 +271,13 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={() => handleEditClick(node)}
+                    disabled={isRenaming === node.id}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    {isRenaming === node.id ? 'Renaming...' : 'Rename file'}
+                  </ContextMenuItem>
                   <ContextMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={() => handleDeleteClick(node)}
@@ -189,9 +302,26 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                       <Link 
                         href={`/folder/${node.id}`}
                         className="flex items-center gap-3 flex-1 min-w-0"
+                        onClick={(e) => {
+                          if (editingId === node.id) {
+                            e.preventDefault();
+                          }
+                        }}
                       >
                         <Folder className="h-6 w-6 text-blue-500 flex-shrink-0" fill="currentColor" strokeWidth={1} />
-                        <span className="font-medium text-foreground truncate">{node.name}</span>
+                        {editingId === node.id ? (
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, node)}
+                            onBlur={() => handleSaveEdit(node)}
+                            className="font-medium h-auto py-1 px-2 flex-1"
+                            autoFocus
+                            disabled={isRenaming === node.id}
+                          />
+                        ) : (
+                          <span className="font-medium text-foreground truncate">{node.name}</span>
+                        )}
                       </Link>
                       
                       {node.id !== 'root' && (
@@ -210,6 +340,13 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                   </ContextMenuTrigger>
                   {node.id !== 'root' && (
                     <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => handleEditClick(node)}
+                        disabled={isRenaming === node.id}
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        {isRenaming === node.id ? 'Renaming...' : 'Rename folder'}
+                      </ContextMenuItem>
                       <ContextMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => handleDeleteClick(node)}
@@ -236,9 +373,26 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 flex-1 min-w-0"
+                      onClick={(e) => {
+                        if (editingId === node.id) {
+                          e.preventDefault();
+                        }
+                      }}
                     >
                       <File className="h-6 w-6 text-gray-500 flex-shrink-0" />
-                      <span className="text-foreground truncate">{node.name}</span>
+                      {editingId === node.id ? (
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, node)}
+                          onBlur={() => handleSaveEdit(node)}
+                          className="h-auto py-1 px-2 flex-1"
+                          autoFocus
+                          disabled={isRenaming === node.id}
+                        />
+                      ) : (
+                        <span className="text-foreground truncate">{node.name}</span>
+                      )}
                     </a>
                     
                     <Button
@@ -254,6 +408,13 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
                   </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
+                  <ContextMenuItem
+                    onClick={() => handleEditClick(node)}
+                    disabled={isRenaming === node.id}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    {isRenaming === node.id ? 'Renaming...' : 'Rename file'}
+                  </ContextMenuItem>
                   <ContextMenuItem
                     className="text-destructive focus:text-destructive"
                     onClick={() => handleDeleteClick(node)}
