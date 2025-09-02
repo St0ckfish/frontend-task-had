@@ -16,6 +16,31 @@ export type FolderNode = {
   path: string;
 };
 
+function generateFolderId(relativePath: string): string {
+  if (!relativePath) return "root";
+  return `folder-${relativePath.replace(/\//g, "__")}`;
+}
+
+export function getFolderPathFromId(folderId: string): string {
+  if (folderId === "root") return "";
+
+  if (folderId.startsWith("folder-")) {
+    const pathPart = folderId.substring(7);
+
+    if (pathPart.includes("__")) {
+      return pathPart.replace(/__/g, "/");
+    }
+
+    try {
+      return decodeURIComponent(pathPart);
+    } catch {
+      return pathPart;
+    }
+  }
+
+  return "";
+}
+
 export async function buildFileSystemTree(
   relativePath = ""
 ): Promise<FolderNode> {
@@ -24,11 +49,13 @@ export async function buildFileSystemTree(
 
   const children: Array<FolderNode | FileNode> = [];
 
+
   const items = await readdir(fullPath);
 
   for (const item of items) {
     const itemFullPath = join(fullPath, item);
     const itemRelativePath = relativePath ? `${relativePath}/${item}` : item;
+
 
     const stats = await stat(itemFullPath);
 
@@ -43,12 +70,14 @@ export async function buildFileSystemTree(
         path: itemRelativePath,
       });
     }
+
   }
 
+
+  const folderId = generateFolderId(relativePath);
+
   return {
-    id: relativePath
-      ? `folder-${encodeURIComponent(relativePath)}`
-      : "root",
+    id: folderId,
     name: relativePath ? relativePath.split("/").pop() || "Unknown" : "Root",
     type: "folder",
     children,
@@ -86,12 +115,25 @@ export async function findFolder(
 
   if (current.id === id) return current;
 
+  if (id !== "root" && id.startsWith("folder-")) {
+    const searchPath = getFolderPathFromId(id);
+
+    if (current.path === searchPath) {
+      return current;
+    }
+
+    if (generateFolderId(current.path) === id) {
+      return current;
+    }
+  }
+
   for (const child of current.children) {
     if (child.type === "folder") {
       const result = await findFolder(id, child);
       if (result) return result;
     }
   }
+
   return null;
 }
 
@@ -108,6 +150,13 @@ export async function getBreadcrumbPath(
 
   if (current.id === id) {
     return currentPath;
+  }
+
+  if (id !== "root" && id.startsWith("folder-")) {
+    const searchPath = getFolderPathFromId(id);
+    if (current.path === searchPath || generateFolderId(current.path) === id) {
+      return currentPath;
+    }
   }
 
   for (const child of current.children) {
@@ -132,6 +181,14 @@ export async function findItem(
     if (child.id === id) {
       return { item: child, parent: current };
     }
+
+    if (child.type === "folder" && id.startsWith("folder-")) {
+      const searchPath = getFolderPathFromId(id);
+      if (child.path === searchPath || generateFolderId(child.path) === id) {
+        return { item: child, parent: current };
+      }
+    }
+
     if (child.type === "folder") {
       const result = await findItem(id, child);
       if (result) return result;
@@ -139,16 +196,3 @@ export async function findItem(
   }
   return null;
 }
-
-export function getFolderPathFromId(folderId: string): string {
-  if (folderId === "root") return "";
-
-  const encodedPath = folderId.replace(/^folder-/, "");
-  try {
-    return decodeURIComponent(encodedPath);
-  } catch {
-    return encodedPath;
-  }
-}
-
-

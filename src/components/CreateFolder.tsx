@@ -34,7 +34,8 @@ export function CreateFolderButton({ folderId = 'root' }: CreateFolderButtonProp
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/folders/${folderId}`, {
+      const encodedId = encodeURIComponent(folderId);
+      const response = await fetch(`/api/folders/${encodedId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmed }),

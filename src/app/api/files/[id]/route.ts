@@ -87,9 +87,15 @@ export async function POST(
     const file = formData.get("file") as File | null;
     const providedName = formData.get("name")?.toString();
     
-    const parent = await findFolder(params.id);
-    if (!parent || !file) {
-      return errorResponse(ERROR_MESSAGES.INVALID_REQUEST, HTTP_STATUS.BAD_REQUEST);
+    const decodedId = decodeURIComponent(params.id || 'root');
+    const parent = await findFolder(decodedId);
+    
+    if (!parent) {
+      return errorResponse(`Parent folder not found (ID: ${decodedId})`, HTTP_STATUS.NOT_FOUND);
+    }
+    
+    if (!file) {
+      return errorResponse("No file provided", HTTP_STATUS.BAD_REQUEST);
     }
 
     const rawName = providedName?.trim() || file.name;
@@ -99,7 +105,7 @@ export async function POST(
       return errorResponse(ERROR_MESSAGES.INVALID_FILE_NAME, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const folderPath = getFolderPathFromId(params.id);
+    const folderPath = getFolderPathFromId(decodedId);
     const targetDir = getTargetDirectory(folderPath);
 
     await mkdir(targetDir, { recursive: true });
@@ -110,7 +116,7 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     await writeFile(paths.physical, Buffer.from(bytes));
 
-    invalidateCaches(params.id);
+    invalidateCaches(decodedId);
 
     return successResponse({
       fileName: uniqueName,

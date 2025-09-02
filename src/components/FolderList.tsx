@@ -23,6 +23,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/src/components/ui/context-menu';
+import toast from 'react-hot-toast';
 
 export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -115,7 +116,7 @@ export function FolderList({ nodes }: { nodes: Array<FolderNode | FileNode>}) {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete');
+        toast.error(error.error || 'Failed to delete');
       }
       
       router.refresh();

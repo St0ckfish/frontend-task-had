@@ -8,7 +8,6 @@ import {
 import { mkdir, rmdir, access } from "fs/promises";
 import { join, basename } from "path";
 
-// ==================== Constants ====================
 const HTTP_STATUS = {
   OK: 200,
   BAD_REQUEST: 400,
@@ -91,7 +90,19 @@ async function validateFolderOperation(
   folderId: string,
   requireExists: boolean = true
 ): Promise<{ valid: boolean; folder?: any; error?: string }> {
-  const folder = await findFolder(folderId);
+  const normalizedId = folderId || 'root';
+  
+  let folder = await findFolder(normalizedId);
+  
+  if (!folder && normalizedId.startsWith('folder-')) {
+    const path = getFolderPathFromId(normalizedId);
+    if (path) {
+      const root = await findFolder('root');
+      if (root) {
+        folder = await findFolder(normalizedId, root);
+      }
+    }
+  }
 
   if (requireExists && !folder) {
     return {
@@ -116,7 +127,8 @@ export async function GET(
   { params }: FolderParams
 ): Promise<NextResponse> {
   try {
-    const validation = await validateFolderOperation(params.id, true);
+    const decodedId = decodeURIComponent(params.id);
+    const validation = await validateFolderOperation(decodedId, true);
     
     if (!validation.valid) {
       return errorResponse(
@@ -141,11 +153,13 @@ export async function POST(
   try {
     const body = await req.json();
     
-    const parentValidation = await validateFolderOperation(params.id, true);
+    const decodedId = decodeURIComponent(params.id || 'root');
+    const parentValidation = await validateFolderOperation(decodedId, true);
+    
     if (!parentValidation.valid) {
       return errorResponse(
-        ERROR_MESSAGES.FOLDER_NOT_FOUND,
-        HTTP_STATUS.BAD_REQUEST
+        `Parent folder not found (ID: ${decodedId})`,
+        HTTP_STATUS.NOT_FOUND
       );
     }
 
@@ -157,7 +171,7 @@ export async function POST(
       );
     }
 
-    const parentPath = getFolderPathFromId(params.id);
+    const parentPath = getFolderPathFromId(decodedId);
     const targetDir = buildFolderPath(parentPath, folderName);
 
     if (await directoryExists(targetDir)) {
@@ -168,7 +182,7 @@ export async function POST(
     }
 
     await mkdir(targetDir, { recursive: true });
-    invalidateFolderCaches(params.id);
+    invalidateFolderCaches(decodedId);
 
     return successResponse({ folderName });
 

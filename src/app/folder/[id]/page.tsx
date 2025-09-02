@@ -22,8 +22,9 @@ interface Props {
 }
 
 export default async function FolderPage({ params }: Props) {
-  const folder = await findFolder(params.id);
-  const breadcrumbPath = await getBreadcrumbPath(params.id);
+  const decodedId = decodeURIComponent(params.id);
+  const folder = await findFolder(decodedId);
+  const breadcrumbPath = await getBreadcrumbPath(decodedId);
 
   if (!folder) {
     return (
@@ -86,8 +87,8 @@ export default async function FolderPage({ params }: Props) {
           </div>
           <div className="flex items-center gap-2">
             <ViewToggle />
-            <CreateFolderButton folderId={params.id} />
-            <CreateFileButton folderId={params.id} />
+            <CreateFolderButton folderId={decodedId} />
+            <CreateFileButton folderId={decodedId} />
           </div>
         </div>
       </div>

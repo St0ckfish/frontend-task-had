@@ -40,7 +40,8 @@ export function CreateFileButton({ folderId = 'root' }: CreateFileButtonProps) {
         formData.append('name', name.trim());
       }
 
-      const response = await fetch(`/api/files/${folderId}`, {
+      const encodedId = encodeURIComponent(folderId);
+      const response = await fetch(`/api/files/${encodedId}`, {
         method: 'POST',
         body: formData,
       });
